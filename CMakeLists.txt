@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-find_package(Qt5 5.12 REQUIRED COMPONENTS Core Gui Qml Quick DBus Test)
+find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Qml Quick DBus Test)
 
 set(APP_ID "batteryinspector.sprainbrains")
 set(APP_BINARY "batteryinspector")
@@ -28,9 +28,20 @@ configure_file(manifest.json.in ${CMAKE_CURRENT_BINARY_DIR}/manifest.json @ONLY)
 configure_file(batteryinspector.apparmor.in ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.apparmor @ONLY)
 configure_file(batteryinspector.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.desktop COPYONLY)
 
+add_library(batteryinspector_core STATIC
+  src/sysfsreader.cpp
+)
+target_link_libraries(batteryinspector_core PUBLIC Qt5::Core Qt5::DBus)
+target_include_directories(batteryinspector_core PUBLIC src)
+
 qt5_add_resources(QML_RESOURCES qml/qml.qrc)
 add_executable(${APP_BINARY} src/main.cpp ${QML_RESOURCES})
-target_link_libraries(${APP_BINARY} PRIVATE Qt5::Gui Qt5::Qml Qt5::Quick)
+target_link_libraries(${APP_BINARY} PRIVATE Qt5::Gui Qt5::Qml Qt5::Quick batteryinspector_core)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
 
 install(TARGETS ${APP_BINARY} RUNTIME DESTINATION .)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/manifest.json

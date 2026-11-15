@@ -1,0 +1,7 @@
+set(TEST_TARGETS tst_sysfsreader)
+foreach(target ${TEST_TARGETS})
+  add_executable(${target} ${target}.cpp)
+  target_link_libraries(${target} PRIVATE batteryinspector_core Qt5::Test)
+  target_compile_definitions(${target} PRIVATE FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+  add_test(NAME ${target} COMMAND ${target})
+endforeach()

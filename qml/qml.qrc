@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/">
         <file>Main.qml</file>
+        <file>components/HeroCard.qml</file>
+        <file>components/InfoRow.qml</file>
+        <file>components/MetricTile.qml</file>
+        <file>components/SectionCard.qml</file>
     </qresource>
 </RCC>

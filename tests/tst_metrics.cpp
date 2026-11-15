@@ -31,6 +31,8 @@ private slots:
     void healthAboveDesignCapacity();
     void zeroChargeFullHasNoHealth();
     void zeroChargeNowFallsBackToEnergy();
+    void timeFollowsStatusDirection();
+    void ignoresInvalidCapacityAndVoltageMax();
     void doesNotMirrorSnapshotWarnings();
 };
 
@@ -238,6 +240,61 @@ void TestMetrics::zeroChargeNowFallsBackToEnergy()
     const auto m = Metrics::normalize(s).values;
     QCOMPARE(m.value("energyNowWh").toDouble(), 30.0);
     QCOMPARE(m.value("timeToEmptySec").toInt(), 21600);
+}
+
+void TestMetrics::timeFollowsStatusDirection()
+{
+    auto makeSnapshot = [](const QString &status) {
+        SupplySnapshot s;
+        PowerSupply p;
+        p.name = "battery";
+        p.type = "Battery";
+        p.attributes = {{"status", status},
+                        {"time_to_empty_avg", "999"},
+                        {"time_to_full_avg", "888"},
+                        {"charge_now", "2000000"},
+                        {"charge_full", "4000000"},
+                        {"current_now", "1000000"},
+                        {"voltage_now", "4000000"}};
+        s.supplies.append(p);
+        s.primaryName = "battery";
+        return s;
+    };
+
+    const auto charging = Metrics::normalize(makeSnapshot(QStringLiteral("Charging"))).values;
+    QVERIFY(!charging.contains("timeToEmptySec"));
+    QCOMPARE(charging.value("timeToFullSec").toInt(), 888);
+
+    const auto discharging = Metrics::normalize(makeSnapshot(QStringLiteral("Discharging"))).values;
+    QCOMPARE(discharging.value("timeToEmptySec").toInt(), 999);
+    QVERIFY(!discharging.contains("timeToFullSec"));
+
+    const auto full = Metrics::normalize(makeSnapshot(QStringLiteral("Full"))).values;
+    QVERIFY(!full.contains("timeToEmptySec"));
+    QVERIFY(!full.contains("timeToFullSec"));
+}
+
+void TestMetrics::ignoresInvalidCapacityAndVoltageMax()
+{
+    SupplySnapshot s;
+    PowerSupply p;
+    p.name = "battery";
+    p.type = "Battery";
+    p.attributes = {{"capacity", "81"},
+                    {"charge_now", "0"},
+                    {"charge_counter", "2349700"},
+                    {"charge_full", "3113000"},
+                    {"charge_full_design", "3113000"},
+                    {"energy_full_design", "0"},
+                    {"voltage_max", "-22000"}};
+    s.supplies.append(p);
+    s.primaryName = "battery";
+
+    const auto m = Metrics::normalize(s).values;
+    QVERIFY(qAbs(m.value("chargeNowAh").toDouble() - 2.3497) < 1e-9);
+    QVERIFY(qAbs(m.value("chargeCounterAh").toDouble() - 2.3497) < 1e-9);
+    QVERIFY(!m.contains("energyFullDesignWh"));
+    QVERIFY(!m.contains("voltageMaxV"));
 }
 
 void TestMetrics::doesNotMirrorSnapshotWarnings()

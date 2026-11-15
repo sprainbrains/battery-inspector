@@ -50,8 +50,8 @@ Rectangle {
 
         Connections {
             target: root
-            onPercentageChanged: ring.requestPaint()
-            onStatusKeyChanged: ring.requestPaint()
+            function onPercentageChanged() { ring.requestPaint() }
+            function onStatusKeyChanged() { ring.requestPaint() }
         }
 
         onWidthChanged: requestPaint()

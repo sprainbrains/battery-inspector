@@ -50,8 +50,8 @@ public:
     Q_INVOKABLE QString saveReport(const QString &path = QString()) const;
     Q_INVOKABLE QString reportJson(bool pretty = true) const;
 
-    void start();
-    void stop();
+    Q_INVOKABLE void start();
+    Q_INVOKABLE void stop();
 
 signals:
     void changed();

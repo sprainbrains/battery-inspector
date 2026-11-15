@@ -98,9 +98,9 @@ Item {
 
         Connections {
             target: root
-            onSamplesChanged: canvas.requestPaint()
-            onStatsChanged: canvas.requestPaint()
-            onMetricChanged: canvas.requestPaint()
+            function onSamplesChanged() { canvas.requestPaint() }
+            function onStatsChanged() { canvas.requestPaint() }
+            function onMetricChanged() { canvas.requestPaint() }
         }
     }
 

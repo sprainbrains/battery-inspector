@@ -340,15 +340,30 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
         values.insert(QStringLiteral("wearPercent"), qMax(0.0, 100.0 - health));
     }
 
-    // Charge capacities in µAh → Ah.
-    if (numberFromAttributes(sources.battery, QStringLiteral("charge_now"), &value))
+    // Charge capacities in µAh → Ah. A zero charge_now is unavailable on many
+    // qcom fuel gauges; fall back to the positive charge_counter instead.
+    bool hasChargeNow = false;
+    if (numberFromAttributes(sources.battery, QStringLiteral("charge_now"), &value)
+        && value > 0.0) {
         values.insert(QStringLiteral("chargeNowAh"), value / Micro);
-    if (numberFromAttributes(sources.battery, QStringLiteral("charge_full"), &value))
-        values.insert(QStringLiteral("chargeFullAh"), value / Micro);
-    if (numberFromAttributes(sources.battery, QStringLiteral("charge_full_design"), &value))
-        values.insert(QStringLiteral("chargeFullDesignAh"), value / Micro);
-    if (numberFromAttributes(sources.battery, QStringLiteral("charge_counter"), &value))
+        hasChargeNow = true;
+    }
+    if (numberFromAttributes(sources.battery, QStringLiteral("charge_counter"), &value)
+        && value > 0.0) {
         values.insert(QStringLiteral("chargeCounterAh"), value / Micro);
+        if (!hasChargeNow) {
+            values.insert(QStringLiteral("chargeNowAh"), value / Micro);
+            hasChargeNow = true;
+        }
+    }
+    if (numberFromAttributes(sources.battery, QStringLiteral("charge_full"), &value)
+        && value > 0.0) {
+        values.insert(QStringLiteral("chargeFullAh"), value / Micro);
+    }
+    if (numberFromAttributes(sources.battery, QStringLiteral("charge_full_design"), &value)
+        && value > 0.0) {
+        values.insert(QStringLiteral("chargeFullDesignAh"), value / Micro);
+    }
 
     // Energy capacities in µWh → Wh, with UPower fallbacks in target units.
     if (numberFromAttributes(sources.battery, QStringLiteral("energy_now"), &value)) {
@@ -356,14 +371,17 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
     } else if (numberFromUpower(upower, QStringLiteral("energy"), &value)) {
         values.insert(QStringLiteral("energyNowWh"), value);
     }
-    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full"), &value)) {
+    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full"), &value)
+        && value > 0.0) {
         values.insert(QStringLiteral("energyFullWh"), value / Micro);
-    } else if (numberFromUpower(upower, QStringLiteral("energyFull"), &value)) {
+    } else if (numberFromUpower(upower, QStringLiteral("energyFull"), &value) && value > 0.0) {
         values.insert(QStringLiteral("energyFullWh"), value);
     }
-    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full_design"), &value)) {
+    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full_design"), &value)
+        && value > 0.0) {
         values.insert(QStringLiteral("energyFullDesignWh"), value / Micro);
-    } else if (numberFromUpower(upower, QStringLiteral("energyFullDesign"), &value)) {
+    } else if (numberFromUpower(upower, QStringLiteral("energyFullDesign"), &value)
+               && value > 0.0) {
         values.insert(QStringLiteral("energyFullDesignWh"), value);
     }
 
@@ -377,19 +395,22 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
         values.insert(QStringLiteral("cycleCount"), cycles);
     }
 
-    // Time to empty: sysfs seconds → UPower seconds → charge/energy estimate.
+    // Time to empty: only meaningful while discharging. The BMS can report a
+    // stale average while charging, so gate both sysfs and UPower by state.
+    const QString state = values.value(QStringLiteral("statusKey")).toString();
     int seconds = 0;
     bool hasTimeToEmpty = false;
-    if (numberFromAttributes(sources.battery, QStringLiteral("time_to_empty_avg"), &value)
-        && secondsToInt(value, &seconds)) {
-        values.insert(QStringLiteral("timeToEmptySec"), seconds);
-        hasTimeToEmpty = true;
-    } else if (numberFromUpower(upower, QStringLiteral("timeToEmpty"), &value)
-               && secondsToInt(value, &seconds)) {
-        values.insert(QStringLiteral("timeToEmptySec"), seconds);
-        hasTimeToEmpty = true;
+    if (state == QLatin1String("discharging")) {
+        if (numberFromAttributes(sources.battery, QStringLiteral("time_to_empty_avg"), &value)
+            && secondsToInt(value, &seconds)) {
+            values.insert(QStringLiteral("timeToEmptySec"), seconds);
+            hasTimeToEmpty = true;
+        } else if (numberFromUpower(upower, QStringLiteral("timeToEmpty"), &value)
+                   && secondsToInt(value, &seconds)) {
+            values.insert(QStringLiteral("timeToEmptySec"), seconds);
+            hasTimeToEmpty = true;
+        }
     }
-    const QString state = values.value(QStringLiteral("statusKey")).toString();
     if (!hasTimeToEmpty && state == QLatin1String("discharging")) {
         double estimate = 0.0;
         bool hasEstimate = false;
@@ -407,17 +428,19 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
             values.insert(QStringLiteral("timeToEmptySec"), seconds);
     }
 
-    // Time to full: sysfs seconds → UPower seconds → remaining charge/energy estimate.
+    // Time to full: only meaningful while charging.
     int fullSeconds = 0;
     bool hasTimeToFull = false;
-    if (numberFromAttributes(sources.battery, QStringLiteral("time_to_full_avg"), &value)
-        && secondsToInt(value, &fullSeconds)) {
-        values.insert(QStringLiteral("timeToFullSec"), fullSeconds);
-        hasTimeToFull = true;
-    } else if (numberFromUpower(upower, QStringLiteral("timeToFull"), &value)
-               && secondsToInt(value, &fullSeconds)) {
-        values.insert(QStringLiteral("timeToFullSec"), fullSeconds);
-        hasTimeToFull = true;
+    if (state == QLatin1String("charging")) {
+        if (numberFromAttributes(sources.battery, QStringLiteral("time_to_full_avg"), &value)
+            && secondsToInt(value, &fullSeconds)) {
+            values.insert(QStringLiteral("timeToFullSec"), fullSeconds);
+            hasTimeToFull = true;
+        } else if (numberFromUpower(upower, QStringLiteral("timeToFull"), &value)
+                   && secondsToInt(value, &fullSeconds)) {
+            values.insert(QStringLiteral("timeToFullSec"), fullSeconds);
+            hasTimeToFull = true;
+        }
     }
     if (!hasTimeToFull && state == QLatin1String("charging")) {
         double estimate = 0.0;
@@ -516,8 +539,10 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
         values.insert(QStringLiteral("inputCurrentLimitA"), value / Micro);
     if (numberFromAttributes(sources.all, QStringLiteral("constant_charge_current"), &value))
         values.insert(QStringLiteral("constantChargeCurrentA"), value / Micro);
-    if (numberFromAttributes(sources.all, QStringLiteral("voltage_max"), &value))
+    if (numberFromAttributes(sources.all, QStringLiteral("voltage_max"), &value)
+        && value > 0.0) {
         values.insert(QStringLiteral("voltageMaxV"), value / Micro);
+    }
     if (numberFromAttributes(sources.all, QStringLiteral("charger_temp"), &value))
         values.insert(QStringLiteral("chargerTempC"), value / DeciDegree);
     if (numberFromAttributes(sources.all, QStringLiteral("system_temp_level"), &value)

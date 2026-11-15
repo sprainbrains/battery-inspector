@@ -50,6 +50,7 @@ private slots:
     void rawAttributesIncludeUeventAndUpower();
     void powerSuppliesList();
     void reportJsonIsValid();
+    void startStopAreInvokable();
 
 private:
     static QString fixture(const QString &name);
@@ -244,6 +245,15 @@ void TestBatteryProvider::reportJsonIsValid()
     const QJsonDocument document = QJsonDocument::fromJson(provider.reportJson().toUtf8());
     QVERIFY(document.isObject());
     QVERIFY(document.object().contains(QStringLiteral("summary")));
+}
+
+void TestBatteryProvider::startStopAreInvokable()
+{
+    qputenv("BATTERY_SYSFS_ROOT", fixture("amber").toUtf8());
+    FakeUpowerSource fake;
+    BatteryProvider provider(&fake);
+    QVERIFY(QMetaObject::invokeMethod(&provider, "start"));
+    QVERIFY(QMetaObject::invokeMethod(&provider, "stop"));
 }
 
 QTEST_GUILESS_MAIN(TestBatteryProvider)

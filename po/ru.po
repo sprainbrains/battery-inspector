@@ -254,5 +254,8 @@ msgstr "Присутствует, не подключено"
 msgid "(0 may mean the controller does not report a cycle counter.)"
 msgstr "(0 может означать, что контроллер не сообщает счётчик циклов.)"
 
+msgid "Author: %1"
+msgstr "Автор: %1"
+
 msgid "Detailed battery telemetry for Ubuntu Touch"
 msgstr "Подробная телеметрия батареи для Ubuntu Touch"

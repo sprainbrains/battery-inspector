@@ -114,6 +114,10 @@ The package is a standard arm64 click for `ubuntu-touch-24.04-1.x`. The
 `manifest.json` and AppArmor policy are ready for publication; fill in the
 maintainer email first.
 
+## Author
+
+Nikolai Sinyov ([@sprainbrains](https://github.com/sprainbrains))
+
 ## License
 
 GPL-3.0-or-later. See `LICENSE`.

@@ -10,6 +10,6 @@
     }
   },
   "version": "1.0.0",
-  "maintainer": "sprainbrains",
+  "maintainer": "Nikolai Sinyov <nikolay.sinyov@yandex.ru>",
   "framework": "@CLICK_FRAMEWORK@"
 }

@@ -472,6 +472,19 @@ MainView {
             title: i18n.tr("About Battery Inspector")
             text: i18n.tr("Battery Inspector 1.0.0\n\nData sources: Linux power_supply and UPower (optional).\nNo data leaves the device.")
 
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                textFormat: Text.RichText
+                font.pixelSize: units.dp(13)
+                color: theme.palette.normal.backgroundText
+                linkColor: theme.palette.normal.positive
+                text: i18n.tr("Author: %1").arg("Nikolai Sinyov")
+                      + "<br><a href=\"https://github.com/sprainbrains/battery-inspector\">"
+                      + "github.com/sprainbrains/battery-inspector</a>"
+                onLinkActivated: Qt.openUrlExternally(link)
+            }
+
             TextEdit {
                 id: reportClipboard
                 visible: false

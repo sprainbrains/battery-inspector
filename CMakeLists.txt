@@ -46,7 +46,23 @@ target_link_libraries(${APP_BINARY} PRIVATE Qt5::Gui Qt5::Qml Qt5::Quick battery
 include(CTest)
 if(BUILD_TESTING)
   add_subdirectory(tests)
+  add_test(NAME translations
+           COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check-translations.py ${CMAKE_SOURCE_DIR})
 endif()
+
+add_subdirectory(po)
+
+find_program(GETTEXT_MSGFMT_EXECUTABLE msgfmt REQUIRED)
+add_custom_target(desktop ALL
+  COMMAND ${GETTEXT_MSGFMT_EXECUTABLE}
+          --desktop
+          -l ru
+          --template=${CMAKE_SOURCE_DIR}/batteryinspector.desktop.in
+          -o ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.desktop
+          ${CMAKE_SOURCE_DIR}/po/ru.po
+  DEPENDS ${CMAKE_SOURCE_DIR}/batteryinspector.desktop.in
+          ${CMAKE_SOURCE_DIR}/po/ru.po
+  COMMENT "Generating translated desktop file")
 
 install(TARGETS ${APP_BINARY} RUNTIME DESTINATION .)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/manifest.json

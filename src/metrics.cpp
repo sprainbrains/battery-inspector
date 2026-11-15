@@ -130,6 +130,23 @@ QString statusKeyFor(const QString &status)
     return QStringLiteral("unknown");
 }
 
+QString statusKeyFromUpowerState(int state)
+{
+    switch (state) {
+    case 1: // charging
+    case 5: // pending charge
+        return QStringLiteral("charging");
+    case 2: // discharging
+    case 3: // empty
+    case 6: // pending discharge
+        return QStringLiteral("discharging");
+    case 4: // full
+        return QStringLiteral("full");
+    default:
+        return {};
+    }
+}
+
 QString technologyName(int value)
 {
     switch (value) {
@@ -196,7 +213,6 @@ namespace Metrics {
 NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &upower)
 {
     NormalizedMetrics result;
-    result.warnings = snapshot.warnings;
 
     const Sources sources = collectSources(snapshot);
     QVariantMap &values = result.values;
@@ -223,6 +239,17 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
     if (stringFromAttributes(sources.battery, QStringLiteral("status"), &text)) {
         values.insert(QStringLiteral("status"), text);
         values.insert(QStringLiteral("statusKey"), statusKeyFor(text));
+    }
+    if (values.value(QStringLiteral("statusKey")).toString().isEmpty()
+        || values.value(QStringLiteral("statusKey")).toString()
+                == QLatin1String("unknown")) {
+        bool ok = false;
+        const int upowerState = upower.value(QStringLiteral("state")).toInt(&ok);
+        if (ok) {
+            const QString mapped = statusKeyFromUpowerState(upowerState);
+            if (!mapped.isEmpty())
+                values.insert(QStringLiteral("statusKey"), mapped);
+        }
     }
 
     // Voltage: voltage_now → voltage_avg → UPower voltage.
@@ -263,6 +290,9 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
     } else if (hasVoltage && hasCurrent) {
         power = voltage * current;
         hasPower = true;
+    } else if (numberFromUpower(upower, QStringLiteral("energyRate"), &value)) {
+        power = value;
+        hasPower = true;
     }
     if (hasPower)
         values.insert(QStringLiteral("power"), power);
@@ -289,11 +319,13 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
     double full = 0.0;
     double design = 0.0;
     if (numberFromAttributes(sources.battery, QStringLiteral("charge_full"), &full)
+        && full > 0.0
         && numberFromAttributes(sources.battery, QStringLiteral("charge_full_design"), &design)
         && design > 0.0) {
         health = full * 100.0 / design;
         hasHealth = true;
     } else if (numberFromAttributes(sources.battery, QStringLiteral("energy_full"), &full)
+               && full > 0.0
                && numberFromAttributes(sources.battery, QStringLiteral("energy_full_design"),
                                        &design)
                && design > 0.0) {
@@ -304,9 +336,8 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
         hasHealth = true;
     }
     if (hasHealth) {
-        health = clampPercent(health);
         values.insert(QStringLiteral("healthPercent"), health);
-        values.insert(QStringLiteral("wearPercent"), 100.0 - health);
+        values.insert(QStringLiteral("wearPercent"), qMax(0.0, 100.0 - health));
     }
 
     // Charge capacities in µAh → Ah.
@@ -319,13 +350,22 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
     if (numberFromAttributes(sources.battery, QStringLiteral("charge_counter"), &value))
         values.insert(QStringLiteral("chargeCounterAh"), value / Micro);
 
-    // Energy capacities in µWh → Wh.
-    if (numberFromAttributes(sources.battery, QStringLiteral("energy_now"), &value))
+    // Energy capacities in µWh → Wh, with UPower fallbacks in target units.
+    if (numberFromAttributes(sources.battery, QStringLiteral("energy_now"), &value)) {
         values.insert(QStringLiteral("energyNowWh"), value / Micro);
-    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full"), &value))
+    } else if (numberFromUpower(upower, QStringLiteral("energy"), &value)) {
+        values.insert(QStringLiteral("energyNowWh"), value);
+    }
+    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full"), &value)) {
         values.insert(QStringLiteral("energyFullWh"), value / Micro);
-    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full_design"), &value))
+    } else if (numberFromUpower(upower, QStringLiteral("energyFull"), &value)) {
+        values.insert(QStringLiteral("energyFullWh"), value);
+    }
+    if (numberFromAttributes(sources.battery, QStringLiteral("energy_full_design"), &value)) {
         values.insert(QStringLiteral("energyFullDesignWh"), value / Micro);
+    } else if (numberFromUpower(upower, QStringLiteral("energyFullDesign"), &value)) {
+        values.insert(QStringLiteral("energyFullDesignWh"), value);
+    }
 
     // Cycle count: sysfs → UPower, negative values mean unknown.
     int cycles = 0;
@@ -354,7 +394,7 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
         double estimate = 0.0;
         bool hasEstimate = false;
         const double chargeNow = values.value(QStringLiteral("chargeNowAh")).toDouble();
-        if (hasCurrent && current != 0.0 && values.contains(QStringLiteral("chargeNowAh"))) {
+        if (hasCurrent && current != 0.0 && chargeNow > 0.0) {
             estimate = chargeNow / qAbs(current) * 3600.0;
             hasEstimate = true;
         } else if (hasPower && power != 0.0
@@ -412,23 +452,34 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
         values.insert(QStringLiteral("technology"), text);
     }
 
-    // Plain text fields read from the battery/BMS only.
+    // Plain text fields read from the battery/BMS only, with UPower fallbacks.
     static const struct
     {
         const char *key;
         const char *attribute;
+        const char *upowerKey; // nullptr when UPower has no matching property
     } textFields[] = {
-        {"health", "health"},
-        {"capacityLevel", "capacity_level"},
-        {"chargeType", "charge_type"},
-        {"modelName", "model_name"},
-        {"manufacturer", "manufacturer"},
-        {"serialNumber", "serial_number"},
-        {"batteryType", "battery_type"},
+        {"health", "health", nullptr},
+        {"capacityLevel", "capacity_level", nullptr},
+        {"chargeType", "charge_type", nullptr},
+        {"modelName", "model_name", "model"},
+        {"manufacturer", "manufacturer", "vendor"},
+        {"serialNumber", "serial_number", "serial"},
+        {"batteryType", "battery_type", nullptr},
     };
     for (const auto &field : textFields) {
-        if (stringFromAttributes(sources.battery, QLatin1String(field.attribute), &text))
+        if (stringFromAttributes(sources.battery, QLatin1String(field.attribute), &text)) {
             values.insert(QLatin1String(field.key), text);
+            continue;
+        }
+        if (!field.upowerKey)
+            continue;
+        const auto it = upower.constFind(QLatin1String(field.upowerKey));
+        if (it == upower.constEnd())
+            continue;
+        const QString upowerText = it.value().toString().trimmed();
+        if (!upowerText.isEmpty())
+            values.insert(QLatin1String(field.key), upowerText);
     }
 
     if (stringFromAttributes(sources.battery, QStringLiteral("present"), &text)) {
@@ -440,12 +491,23 @@ NormalizedMetrics normalize(const SupplySnapshot &snapshot, const QVariantMap &u
                    || flag == QLatin1String("false")) {
             values.insert(QStringLiteral("present"), false);
         }
+    } else {
+        const auto it = upower.constFind(QStringLiteral("isPresent"));
+        if (it != upower.constEnd() && it.value().isValid())
+            values.insert(QStringLiteral("present"), it.value().toBool());
     }
 
     if (!snapshot.sysfsRoot.isEmpty() && !sources.battery.isEmpty()) {
         values.insert(QStringLiteral("nativePath"),
                       snapshot.sysfsRoot + QLatin1Char('/')
                               + sources.battery.first()->name);
+    } else {
+        const auto it = upower.constFind(QStringLiteral("nativePath"));
+        if (it != upower.constEnd()) {
+            const QString upowerPath = it.value().toString().trimmed();
+            if (!upowerPath.isEmpty())
+                values.insert(QStringLiteral("nativePath"), upowerPath);
+        }
     }
 
     // Charger-side values may live on a non-battery supply such as usb/ac.

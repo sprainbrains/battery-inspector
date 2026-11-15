@@ -26,6 +26,12 @@ private slots:
     void mergesUpowerOnlyWhenMissing();
     void technologyFromUpowerEnum();
     void upowerOnlyWorks();
+    void mapsStatusKeys();
+    void upowerStateFillsUnknownStatus();
+    void healthAboveDesignCapacity();
+    void zeroChargeFullHasNoHealth();
+    void zeroChargeNowFallsBackToEnergy();
+    void doesNotMirrorSnapshotWarnings();
 };
 
 void TestMetrics::normalizesAmberBattery()
@@ -68,6 +74,8 @@ void TestMetrics::handlesMissingValues()
 void TestMetrics::handlesZeroDesignCapacity()
 {
     const auto m = Metrics::normalize(reader(QStringLiteral("bad_values")).read());
+    QVERIFY(!m.values.contains("temperature"));
+    QVERIFY(!m.values.contains("percentage"));
     QVERIFY(!m.values.contains("healthPercent"));
     QVERIFY(!m.values.contains("wearPercent"));
 }
@@ -113,10 +121,11 @@ void TestMetrics::timeFromChargeAndCurrent()
 void TestMetrics::mergesUpowerOnlyWhenMissing()
 {
     const auto amber = reader(QStringLiteral("amber")).read();
-    QVariantMap up{{"voltage", 4.2}, {"chargeCycles", 300}};
+    QVariantMap up{{"voltage", 4.2}, {"chargeCycles", 300}, {"state", 1}};
     const auto merged = Metrics::normalize(amber, up).values;
     QCOMPARE(merged.value("voltage").toDouble(), 3.92);
     QCOMPARE(merged.value("cycleCount").toInt(), 214);
+    QCOMPARE(merged.value("statusKey").toString(), QString("discharging"));
 
     SupplySnapshot noCycles = amber;
     for (auto &supply : noCycles.supplies)
@@ -137,12 +146,105 @@ void TestMetrics::upowerOnlyWorks()
     SupplySnapshot empty;
     empty.sysfsAvailable = false;
     QVariantMap up{{"percentage", 55.0}, {"voltage", 4.1},
-                   {"capacity", 90.0}, {"chargeCycles", 42}, {"temperature", 30.0}};
+                   {"capacity", 90.0}, {"chargeCycles", 42}, {"temperature", 30.0},
+                   {"energy", 20.0}, {"energyFull", 48.0}, {"energyFullDesign", 60.0},
+                   {"energyRate", 7.5}, {"model", "Yandex Phone Battery"},
+                   {"vendor", "Yandex"}, {"serial", "SN123456"},
+                   {"nativePath", "/org/freedesktop/UPower/devices/battery_BAT0"},
+                   {"isPresent", true}, {"state", 2}};
     const auto m = Metrics::normalize(empty, up);
     QCOMPARE(m.values.value("percentage").toDouble(), 55.0);
     QCOMPARE(m.values.value("healthPercent").toDouble(), 90.0);
     QCOMPARE(m.values.value("cycleCount").toInt(), 42);
     QCOMPARE(m.values.value("voltage").toDouble(), 4.1);
+    QCOMPARE(m.values.value("temperature").toDouble(), 30.0);
+    QCOMPARE(m.values.value("energyNowWh").toDouble(), 20.0);
+    QCOMPARE(m.values.value("energyFullWh").toDouble(), 48.0);
+    QCOMPARE(m.values.value("energyFullDesignWh").toDouble(), 60.0);
+    QCOMPARE(m.values.value("power").toDouble(), 7.5);
+    QCOMPARE(m.values.value("modelName").toString(), QString("Yandex Phone Battery"));
+    QCOMPARE(m.values.value("manufacturer").toString(), QString("Yandex"));
+    QCOMPARE(m.values.value("serialNumber").toString(), QString("SN123456"));
+    QCOMPARE(m.values.value("nativePath").toString(),
+             QString("/org/freedesktop/UPower/devices/battery_BAT0"));
+    QCOMPARE(m.values.value("present").toBool(), true);
+    QCOMPARE(m.values.value("statusKey").toString(), QString("discharging"));
+}
+
+void TestMetrics::mapsStatusKeys()
+{
+    const auto keyFor = [](const QString &status) {
+        SupplySnapshot s;
+        PowerSupply p;
+        p.name = "battery"; p.type = "Battery";
+        p.attributes["status"] = status;
+        s.supplies.append(p); s.primaryName = "battery";
+        return Metrics::normalize(s).values.value("statusKey").toString();
+    };
+    QCOMPARE(keyFor(QStringLiteral("Charging")), QString("charging"));
+    QCOMPARE(keyFor(QStringLiteral("Discharging")), QString("discharging"));
+    QCOMPARE(keyFor(QStringLiteral("Full")), QString("full"));
+    QCOMPARE(keyFor(QStringLiteral("Not charging")), QString("notCharging"));
+    QCOMPARE(keyFor(QStringLiteral("Unknown")), QString("unknown"));
+}
+
+void TestMetrics::upowerStateFillsUnknownStatus()
+{
+    SupplySnapshot s;
+    PowerSupply p;
+    p.name = "battery"; p.type = "Battery";
+    p.attributes["status"] = "Unknown";
+    s.supplies.append(p); s.primaryName = "battery";
+    QVariantMap up{{"state", 5}};
+    QCOMPARE(Metrics::normalize(s, up).values.value("statusKey").toString(),
+             QString("charging"));
+}
+
+void TestMetrics::healthAboveDesignCapacity()
+{
+    SupplySnapshot s;
+    PowerSupply p;
+    p.name = "battery"; p.type = "Battery";
+    p.attributes = {{"charge_full", "4500000"}, {"charge_full_design", "4000000"}};
+    s.supplies.append(p); s.primaryName = "battery";
+    const auto m = Metrics::normalize(s).values;
+    QCOMPARE(m.value("healthPercent").toDouble(), 112.5);
+    QCOMPARE(m.value("wearPercent").toDouble(), 0.0);
+}
+
+void TestMetrics::zeroChargeFullHasNoHealth()
+{
+    SupplySnapshot s;
+    PowerSupply p;
+    p.name = "battery"; p.type = "Battery";
+    p.attributes = {{"charge_now", "2000000"}, {"charge_full", "0"},
+                    {"charge_full_design", "4000000"}};
+    s.supplies.append(p); s.primaryName = "battery";
+    const auto m = Metrics::normalize(s).values;
+    QVERIFY(!m.contains("healthPercent"));
+    QVERIFY(!m.contains("wearPercent"));
+}
+
+void TestMetrics::zeroChargeNowFallsBackToEnergy()
+{
+    SupplySnapshot s;
+    PowerSupply p;
+    p.name = "battery"; p.type = "Battery";
+    p.attributes = {{"status", "Discharging"}, {"charge_now", "0"},
+                    {"charge_full", "4000000"},
+                    {"energy_now", "30000000"}, {"energy_full", "60000000"},
+                    {"power_now", "5000000"}};
+    s.supplies.append(p); s.primaryName = "battery";
+    const auto m = Metrics::normalize(s).values;
+    QCOMPARE(m.value("energyNowWh").toDouble(), 30.0);
+    QCOMPARE(m.value("timeToEmptySec").toInt(), 21600);
+}
+
+void TestMetrics::doesNotMirrorSnapshotWarnings()
+{
+    SupplySnapshot s;
+    s.warnings << QStringLiteral("no-battery");
+    QVERIFY(Metrics::normalize(s).warnings.isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestMetrics)

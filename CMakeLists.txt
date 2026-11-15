@@ -31,6 +31,7 @@ configure_file(batteryinspector.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/batteryin
 add_library(batteryinspector_core STATIC
   src/history.cpp
   src/metrics.cpp
+  src/reportwriter.cpp
   src/sysfsreader.cpp
 )
 target_link_libraries(batteryinspector_core PUBLIC Qt5::Core Qt5::DBus)

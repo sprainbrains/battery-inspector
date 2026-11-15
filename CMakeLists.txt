@@ -33,6 +33,7 @@ add_library(batteryinspector_core STATIC
   src/metrics.cpp
   src/reportwriter.cpp
   src/sysfsreader.cpp
+  src/upowersource.cpp
 )
 target_link_libraries(batteryinspector_core PUBLIC Qt5::Core Qt5::DBus)
 target_include_directories(batteryinspector_core PUBLIC src)

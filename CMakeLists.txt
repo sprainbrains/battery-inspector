@@ -29,6 +29,7 @@ configure_file(batteryinspector.apparmor.in ${CMAKE_CURRENT_BINARY_DIR}/batteryi
 configure_file(batteryinspector.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.desktop COPYONLY)
 
 add_library(batteryinspector_core STATIC
+  src/metrics.cpp
   src/sysfsreader.cpp
 )
 target_link_libraries(batteryinspector_core PUBLIC Qt5::Core Qt5::DBus)

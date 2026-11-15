@@ -1,4 +1,4 @@
-set(TEST_TARGETS tst_sysfsreader)
+set(TEST_TARGETS tst_sysfsreader tst_metrics)
 foreach(target ${TEST_TARGETS})
   add_executable(${target} ${target}.cpp)
   target_link_libraries(${target} PRIVATE batteryinspector_core Qt5::Test)

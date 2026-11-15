@@ -257,5 +257,8 @@ msgstr "(0 может означать, что контроллер не соо�
 msgid "Author: %1"
 msgstr "Автор: %1"
 
+msgid "Source code"
+msgstr "Исходный код"
+
 msgid "Detailed battery telemetry for Ubuntu Touch"
 msgstr "Подробная телеметрия батареи для Ubuntu Touch"

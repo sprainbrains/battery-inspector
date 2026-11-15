@@ -16,6 +16,8 @@ MainView {
 
     property var summary: battery.summary
     property bool ready: false
+    readonly property string authorUrl: "https://github.com/sprainbrains"
+    readonly property string repositoryUrl: "https://github.com/sprainbrains/battery-inspector"
 
     Settings {
         id: settings
@@ -474,15 +476,20 @@ MainView {
 
             Text {
                 width: parent.width
+                horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 textFormat: Text.RichText
                 font.pixelSize: units.dp(13)
                 color: theme.palette.normal.backgroundText
                 linkColor: theme.palette.normal.positive
-                text: i18n.tr("Author: %1").arg("Nikolai Sinyov")
-                      + "<br><a href=\"https://github.com/sprainbrains/battery-inspector\">"
-                      + "github.com/sprainbrains/battery-inspector</a>"
+                text: i18n.tr("Author: %1").arg(
+                          "<a href=\"" + root.authorUrl + "\">Nikolai Sinyov</a>")
                 onLinkActivated: Qt.openUrlExternally(link)
+            }
+
+            Button {
+                text: i18n.tr("Source code")
+                onClicked: Qt.openUrlExternally(root.repositoryUrl)
             }
 
             TextEdit {

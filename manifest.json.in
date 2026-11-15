@@ -10,6 +10,6 @@
     }
   },
   "version": "1.0.0",
-  "maintainer": "Nikolai Sinyov <nikolay.sinyov@yandex.ru>",
+  "maintainer": "Nikolai Sinyov <nikolay.sinyov@gmail.com>",
   "framework": "@CLICK_FRAMEWORK@"
 }

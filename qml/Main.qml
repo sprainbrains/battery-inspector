@@ -200,6 +200,15 @@ MainView {
                         label: i18n.tr("Cycles")
                         value: summary.cycleCount !== undefined ? summary.cycleCount.toString() : "—"
                     }
+                    Label {
+                        width: parent.width
+                        visible: summary.cycleCount === 0
+                        text: i18n.tr("0 cycles may mean the controller does not report a cycle counter.")
+                        fontSize: "x-small"
+                        wrapMode: Text.WordWrap
+                        color: theme.palette.normal.backgroundText
+                        opacity: 0.7
+                    }
                     InfoRow {
                         label: i18n.tr("Full charge capacity")
                         value: root.formatWithUnit(summary.chargeFullAh, 3, "Ah")
@@ -274,15 +283,22 @@ MainView {
                 }
 
                 SectionCard {
+                    id: powerCard
                     title: i18n.tr("Power")
-                    visible: battery.supplies.length > 0
+                    property var connectedSupplies: battery.supplies.filter(function(item) {
+                        return item.online || item.present
+                    })
+                    visible: connectedSupplies.length > 0
 
                     Repeater {
-                        model: battery.supplies
+                        model: powerCard.connectedSupplies
 
                         InfoRow {
                             label: modelData.name + " (" + modelData.type + ")"
-                            value: modelData.online ? i18n.tr("Online") : i18n.tr("Offline")
+                            value: modelData.online
+                                   ? i18n.tr("Online")
+                                   : (modelData.present ? i18n.tr("Present, not online")
+                                                        : i18n.tr("Offline"))
                         }
                     }
                 }
@@ -366,6 +382,7 @@ MainView {
                         id: rawLoader
                         width: parent.width
                         active: rawCard.expanded
+                        height: active && item ? item.implicitHeight : 0
                         sourceComponent: Component {
                             RawTable {
                                 width: rawLoader.width

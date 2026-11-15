@@ -39,7 +39,7 @@ msgid "Time to empty: %1"
 msgstr "До разряда: %1"
 
 msgid "Time to full: %1"
-msgstr "До полного заряда: %1"
+msgstr "До полного: %1"
 
 msgid "No"
 msgstr "Нет"
@@ -247,6 +247,12 @@ msgstr "макс. %1 %2"
 
 msgid "Collecting data…"
 msgstr "Сбор данных…"
+
+msgid "Present, not online"
+msgstr "Присутствует, не подключено"
+
+msgid "0 cycles may mean the controller does not report a cycle counter."
+msgstr "0 циклов может означать, что контроллер не сообщает счётчик циклов."
 
 msgid "Detailed battery telemetry for Ubuntu Touch"
 msgstr "Подробная телеметрия батареи для Ubuntu Touch"

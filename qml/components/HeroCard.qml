@@ -60,29 +60,36 @@ Rectangle {
 
     Column {
         anchors.centerIn: parent
-        spacing: units.gu(0.5)
+        width: Math.max(units.gu(8), ring.width * 0.68)
+        spacing: units.gu(0.4)
 
         Label {
-            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
             text: Math.round(root.percentage) + "%"
             fontSize: "xx-large"
             color: theme.palette.normal.backgroundText
         }
 
         Label {
-            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
             text: root.statusLabel
             fontSize: "medium"
             color: theme.palette.normal.backgroundText
         }
 
         Label {
-            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
             text: root.timeText
             fontSize: "small"
             color: theme.palette.normal.backgroundText
             opacity: 0.8
             visible: text.length > 0
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
         }
     }
 }

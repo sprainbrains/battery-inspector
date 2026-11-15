@@ -4,6 +4,8 @@
         <file>components/HeroCard.qml</file>
         <file>components/InfoRow.qml</file>
         <file>components/MetricTile.qml</file>
+        <file>components/RawTable.qml</file>
         <file>components/SectionCard.qml</file>
+        <file>components/Sparkline.qml</file>
     </qresource>
 </RCC>

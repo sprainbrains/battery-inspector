@@ -2,6 +2,7 @@ import QtQuick 2.9
 import QtQuick.Layouts 1.3
 import Lomiri.Components 1.3
 import Lomiri.Components.Popups 1.3
+import Qt.labs.settings 1.0
 import "components"
 
 MainView {
@@ -15,7 +16,18 @@ MainView {
 
     property var summary: battery.summary
 
-    Component.onCompleted: battery.start()
+    Settings {
+        id: settings
+        category: "batteryinspector"
+        property int pollInterval: 2000
+        property string graphMetric: "voltage"
+    }
+
+    Component.onCompleted: {
+        battery.pollInterval = settings.pollInterval
+        battery.historyMetric = settings.graphMetric
+        battery.start()
+    }
     Component.onDestruction: battery.stop()
 
     function hasValue(value) {
@@ -81,6 +93,16 @@ MainView {
         if (code === "no-battery")
             return i18n.tr("No battery")
         return i18n.tr("Unavailable")
+    }
+
+    function metricUnit() {
+        if (battery.historyMetric === "voltage")
+            return "V"
+        if (battery.historyMetric === "current")
+            return "A"
+        if (battery.historyMetric === "power")
+            return "W"
+        return "%"
     }
 
     Page {
@@ -295,6 +317,87 @@ MainView {
                 }
 
                 SectionCard {
+                    title: i18n.tr("Live (last 5 minutes)")
+
+                    Sparkline {
+                        width: parent.width
+                        samples: battery.history
+                        stats: battery.historyStats
+                        metric: battery.historyMetric
+                        unit: root.metricUnit()
+                    }
+
+                    OptionSelector {
+                        width: parent.width
+                        model: [i18n.tr("Voltage"), i18n.tr("Current"),
+                                i18n.tr("Power"), i18n.tr("Charge")]
+                        selectedIndex: {
+                            var metrics = ["voltage", "current", "power", "percentage"]
+                            return Math.max(0, metrics.indexOf(battery.historyMetric))
+                        }
+                        delegate: OptionSelectorDelegate {
+                            text: modelData
+                        }
+                        onSelectedIndexChanged: {
+                            var metrics = ["voltage", "current", "power", "percentage"]
+                            battery.historyMetric = metrics[selectedIndex]
+                            settings.graphMetric = battery.historyMetric
+                        }
+                    }
+                }
+
+                SectionCard {
+                    id: rawCard
+                    title: i18n.tr("Raw data")
+                    property bool expanded: false
+
+                    Button {
+                        width: parent.width
+                        text: rawCard.expanded ? i18n.tr("Hide raw data")
+                                               : i18n.tr("Show raw data")
+                        onClicked: rawCard.expanded = !rawCard.expanded
+                    }
+
+                    Loader {
+                        id: rawLoader
+                        width: parent.width
+                        active: rawCard.expanded
+                        sourceComponent: Component {
+                            RawTable {
+                                width: rawLoader.width
+                                rows: battery.rawAttributes
+                            }
+                        }
+                    }
+                }
+
+                SectionCard {
+                    title: i18n.tr("Settings")
+
+                    InfoRow {
+                        label: i18n.tr("Refresh interval")
+                        value: i18n.tr("%1 s").arg(battery.pollInterval / 1000)
+                    }
+
+                    OptionSelector {
+                        width: parent.width
+                        model: [1, 2, 5, 10]
+                        selectedIndex: {
+                            var intervals = [1, 2, 5, 10]
+                            return Math.max(0, intervals.indexOf(battery.pollInterval / 1000))
+                        }
+                        delegate: OptionSelectorDelegate {
+                            text: modelData + " " + i18n.tr("s")
+                        }
+                        onSelectedIndexChanged: {
+                            var intervals = [1, 2, 5, 10]
+                            battery.pollInterval = intervals[selectedIndex] * 1000
+                            settings.pollInterval = battery.pollInterval
+                        }
+                    }
+                }
+
+                SectionCard {
                     title: i18n.tr("Status")
                     visible: battery.sysfsStatus !== "ok"
 
@@ -344,6 +447,41 @@ MainView {
             id: dialog
             title: i18n.tr("About Battery Inspector")
             text: i18n.tr("Battery Inspector 1.0.0\n\nData sources: Linux power_supply and UPower (optional).\nNo data leaves the device.")
+
+            TextEdit {
+                id: reportClipboard
+                visible: false
+                text: ""
+            }
+
+            Label {
+                id: savedLabel
+                width: parent.width
+                wrapMode: Text.WordWrap
+                fontSize: "small"
+                color: theme.palette.normal.backgroundText
+                text: ""
+            }
+
+            Button {
+                text: i18n.tr("Copy report")
+                onClicked: {
+                    reportClipboard.text = battery.reportJson(true)
+                    reportClipboard.selectAll()
+                    reportClipboard.copy()
+                    savedLabel.text = i18n.tr("Report copied to clipboard")
+                }
+            }
+
+            Button {
+                text: i18n.tr("Save report")
+                onClicked: {
+                    var path = battery.saveReport()
+                    savedLabel.text = path.length > 0
+                            ? i18n.tr("Saved to %1").arg(path)
+                            : i18n.tr("Could not save the report")
+                }
+            }
 
             Button {
                 text: i18n.tr("Close")

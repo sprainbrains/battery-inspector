@@ -32,6 +32,7 @@ Rectangle {
             spacing: units.gu(0.3)
 
             Label {
+                id: valueLabel
                 text: root.value
                 fontSize: "x-large"
                 color: theme.palette.normal.backgroundText
@@ -42,8 +43,8 @@ Rectangle {
                 fontSize: "small"
                 color: theme.palette.normal.backgroundText
                 opacity: 0.75
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: units.gu(0.5)
+                height: valueLabel.height
+                verticalAlignment: Text.AlignBottom
             }
         }
     }

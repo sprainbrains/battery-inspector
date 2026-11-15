@@ -44,6 +44,9 @@ public:
 
     void refresh() override;
     QVariantMap blockingRead(int timeoutMs = 1000) const override;
+
+private:
+    bool m_busy = false;
 };
 
 #endif // UPOWERSOURCE_H

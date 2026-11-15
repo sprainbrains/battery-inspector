@@ -19,7 +19,8 @@ namespace {
 
 void setApplicationIdentity()
 {
-    QCoreApplication::setOrganizationName(QStringLiteral("batteryinspector.sprainbrains"));
+    // Do not set organizationName: with both organization and application set
+    // to the click id, QStandardPaths nests the app data twice.
     QCoreApplication::setApplicationName(QStringLiteral("batteryinspector.sprainbrains"));
     QCoreApplication::setApplicationVersion(QStringLiteral("1.0.0"));
 }

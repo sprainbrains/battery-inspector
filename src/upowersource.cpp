@@ -1,13 +1,15 @@
 #include "upowersource.h"
 
+#include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusObjectPath>
-#include <QDBusPendingCallWatcher>
-#include <QDBusPendingReply>
 #include <QDBusVariant>
+#include <QDebug>
 #include <QHash>
-#include <QSharedPointer>
+#include <QPointer>
+
+#include <thread>
 
 namespace {
 
@@ -118,12 +120,6 @@ QVariant technologyValue(const QVariant &value)
     }
 }
 
-struct DeviceQuery
-{
-    int pending = 0;
-    bool found = false;
-};
-
 } // namespace
 
 UpowerSource::UpowerSource(QObject *parent)
@@ -198,64 +194,36 @@ RealUpowerSource::RealUpowerSource(QObject *parent)
 
 void RealUpowerSource::refresh()
 {
-    const QDBusConnection bus = QDBusConnection::systemBus();
-    if (!bus.isConnected()) {
+    if (m_busy)
+        return;
+
+    if (!QDBusConnection::systemBus().isConnected()) {
         emit unavailable(QStringLiteral("bus-unavailable"));
         return;
     }
 
-    // QDBusInterface's constructor introspects synchronously and would stall the
-    // GUI thread; raw async messages keep the whole refresh non-blocking.
-    const QDBusPendingCall pendingCall = bus.asyncCall(enumerateDevicesRequest());
-    if (!pendingCall.isValid()) {
-        emit unavailable(QStringLiteral("service-unavailable"));
-        return;
-    }
+    // The synchronous GetAll path is the one exercised by --dump and by the
+    // confined AppArmor profile. Run it on a worker so the GUI never blocks.
+    m_busy = true;
+    QPointer<RealUpowerSource> self(this);
+    std::thread([self]() {
+        if (!self)
+            return;
 
-    auto *watcher = new QDBusPendingCallWatcher(pendingCall, this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this,
-            [this, bus](QDBusPendingCallWatcher *call) {
-                call->deleteLater();
+        const QVariantMap data = self->blockingRead(1000);
+        if (!self)
+            return;
 
-                const QDBusPendingReply<> reply = *call;
-                if (reply.isError()) {
-                    emit unavailable(QStringLiteral("service-unavailable"));
-                    return;
-                }
-
-                const QList<QDBusObjectPath> paths
-                        = qdbus_cast<QList<QDBusObjectPath>>(reply.argumentAt(0));
-                if (paths.isEmpty()) {
-                    emit unavailable(QStringLiteral("no-battery"));
-                    return;
-                }
-
-                auto state = QSharedPointer<DeviceQuery>::create();
-                state->pending = paths.size();
-
-                for (const QDBusObjectPath &path : paths) {
-                    const QDBusPendingCall deviceCall
-                            = bus.asyncCall(devicePropertiesRequest(path.path()));
-                    auto *deviceWatcher = new QDBusPendingCallWatcher(deviceCall, this);
-                    connect(deviceWatcher, &QDBusPendingCallWatcher::finished, this,
-                            [this, state](QDBusPendingCallWatcher *deviceFinished) {
-                                deviceFinished->deleteLater();
-
-                                const QDBusPendingReply<> deviceReply = *deviceFinished;
-                                if (!deviceReply.isError() && !state->found) {
-                                    const QVariantMap raw = qdbus_cast<QVariantMap>(
-                                            deviceReply.argumentAt(0));
-                                    if (isBatteryDevice(raw)) {
-                                        state->found = true;
-                                        emit updated(mapProperties(raw));
-                                    }
-                                }
-
-                                if (--state->pending == 0 && !state->found)
-                                    emit unavailable(QStringLiteral("no-battery"));
-                            });
-                }
-            });
+        QMetaObject::invokeMethod(self.data(), [self, data]() {
+            if (!self)
+                return;
+            self->m_busy = false;
+            if (data.isEmpty())
+                emit self->unavailable(QStringLiteral("unavailable"));
+            else
+                emit self->updated(data);
+        }, Qt::QueuedConnection);
+    }).detach();
 }
 
 QVariantMap RealUpowerSource::blockingRead(int timeoutMs) const

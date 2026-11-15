@@ -126,7 +126,7 @@ msgid "Max voltage"
 msgstr "Макс. напряжение"
 
 msgid "Charger temperature"
-msgstr "Температура зарядного устройства"
+msgstr "Температура зарядки"
 
 msgid "Offline"
 msgstr "Не подключено"
@@ -251,8 +251,8 @@ msgstr "Сбор данных…"
 msgid "Present, not online"
 msgstr "Присутствует, не подключено"
 
-msgid "0 cycles may mean the controller does not report a cycle counter."
-msgstr "0 циклов может означать, что контроллер не сообщает счётчик циклов."
+msgid "(0 may mean the controller does not report a cycle counter.)"
+msgstr "(0 может означать, что контроллер не сообщает счётчик циклов.)"
 
 msgid "Detailed battery telemetry for Ubuntu Touch"
 msgstr "Подробная телеметрия батареи для Ubuntu Touch"

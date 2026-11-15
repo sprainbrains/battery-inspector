@@ -7,6 +7,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Qml Quick DBus Test)
+find_package(Threads REQUIRED)
 
 set(APP_ID "batteryinspector.sprainbrains")
 set(APP_BINARY "batteryinspector")
@@ -36,7 +37,7 @@ add_library(batteryinspector_core STATIC
   src/sysfsreader.cpp
   src/upowersource.cpp
 )
-target_link_libraries(batteryinspector_core PUBLIC Qt5::Core Qt5::DBus)
+target_link_libraries(batteryinspector_core PUBLIC Qt5::Core Qt5::DBus Threads::Threads)
 target_include_directories(batteryinspector_core PUBLIC src)
 
 qt5_add_resources(QML_RESOURCES qml/qml.qrc)

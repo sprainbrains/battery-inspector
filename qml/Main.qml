@@ -203,7 +203,7 @@ MainView {
                     Label {
                         width: parent.width
                         visible: summary.cycleCount === 0
-                        text: i18n.tr("0 cycles may mean the controller does not report a cycle counter.")
+                        text: i18n.tr("(0 may mean the controller does not report a cycle counter.)")
                         fontSize: "x-small"
                         wrapMode: Text.WordWrap
                         color: theme.palette.normal.backgroundText
@@ -286,7 +286,8 @@ MainView {
                     id: powerCard
                     title: i18n.tr("Power")
                     property var connectedSupplies: battery.supplies.filter(function(item) {
-                        return item.online || item.present
+                        return item.type !== "Battery" && item.type !== "BMS"
+                               && (item.online || item.present)
                     })
                     visible: connectedSupplies.length > 0
 

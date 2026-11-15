@@ -38,7 +38,7 @@ Item {
 
         onPaint: {
             var ctx = getContext("2d");
-            ctx.reset();
+            ctx.clearRect(0, 0, width, height);
 
             if (!root.visible || root.samples.length < 2)
                 return;

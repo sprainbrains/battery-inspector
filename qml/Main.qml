@@ -15,6 +15,7 @@ MainView {
     height: units.gu(75)
 
     property var summary: battery.summary
+    property bool ready: false
 
     Settings {
         id: settings
@@ -27,6 +28,7 @@ MainView {
         battery.pollInterval = settings.pollInterval
         battery.historyMetric = settings.graphMetric
         battery.start()
+        ready = true
     }
     Component.onDestruction: battery.stop()
 
@@ -339,6 +341,8 @@ MainView {
                             text: modelData
                         }
                         onSelectedIndexChanged: {
+                            if (!root.ready)
+                                return
                             var metrics = ["voltage", "current", "power", "percentage"]
                             battery.historyMetric = metrics[selectedIndex]
                             settings.graphMetric = battery.historyMetric
@@ -390,6 +394,8 @@ MainView {
                             text: modelData + " " + i18n.tr("s")
                         }
                         onSelectedIndexChanged: {
+                            if (!root.ready)
+                                return
                             var intervals = [1, 2, 5, 10]
                             battery.pollInterval = intervals[selectedIndex] * 1000
                             settings.pollInterval = battery.pollInterval

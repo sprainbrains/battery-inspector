@@ -21,7 +21,7 @@ Rectangle {
 
         onPaint: {
             var ctx = getContext("2d");
-            ctx.reset();
+            ctx.clearRect(0, 0, width, height);
 
             var center = width / 2;
             var radius = width / 2 - units.gu(0.7);

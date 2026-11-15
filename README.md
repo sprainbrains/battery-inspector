@@ -7,6 +7,14 @@ available, supplements it with UPower over the system D-Bus.
 It is built for Ubuntu Touch 24.04 with Qt 5.15 and Lomiri.Components 1.3,
 targets arm64, requires no root, and never uses AppArmor `unconfined`.
 
+## Screenshots
+
+<p>
+  <img src="docs/screenshots/main-ru.png" width="32%" alt="Battery Inspector main screen">
+  <img src="docs/screenshots/details-ru.png" width="32%" alt="Power, device, graph, settings">
+  <img src="docs/screenshots/raw-ru.png" width="32%" alt="Raw sysfs table">
+</p>
+
 ## What it shows
 
 - Charge percentage, charging state, time to empty/full.

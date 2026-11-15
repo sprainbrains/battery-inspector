@@ -84,7 +84,9 @@ batteryinspector --dump --pretty
 - `/sys/class/power_supply/*` — kernel attributes, including `battery` and
   `bms` on Amber.
 - `org.freedesktop.UPower` — optional normalized values over the system bus.
-  If the bus is unavailable or blocked, the app continues on sysfs.
+  Ubuntu Touch has no per-service UPower policy group, so the app uses the
+  `dbus` AppArmor abstraction for this (confined, never `unconfined`). If the
+  bus is unavailable or blocked, the app continues on sysfs.
 
 ## Privacy
 

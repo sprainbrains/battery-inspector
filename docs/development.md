@@ -101,6 +101,7 @@ msgfmt --desktop -l ru \
 The app uses a read-only policy:
 
 ```json
+"abstractions": ["dbus"],
 "read_path": [
   "/sys/class/power_supply/",
   "/sys/class/power_supply/**",
@@ -109,9 +110,13 @@ The app uses a read-only policy:
 ]
 ```
 
+The `dbus` abstraction is what lets the confined app call UPower on the
+system bus; Ubuntu Touch has no narrower UPower policy group. It is wider
+than `dbus-strict`, so prefer a narrower policy if one becomes available.
+The app still never uses `unconfined`.
+
 UPower is optional. If the system bus is unavailable or blocked, the app
-continues on sysfs and reports `UPower: unavailable`. The policy never uses
-`unconfined`.
+continues on sysfs and reports `UPower: unavailable`.
 
 ## Known limitations
 

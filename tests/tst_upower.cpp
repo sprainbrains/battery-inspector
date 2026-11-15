@@ -15,6 +15,8 @@ private slots:
     void dropsNegativeCycles();
     void mapsThresholds();
     void keepsUnknownKeys();
+    void buildsEnumerateDevicesRequest();
+    void buildsDevicePropertiesRequest();
     void blockingReadWithoutSystemBusReturnsEmpty();
 };
 
@@ -67,6 +69,27 @@ void TestUpower::keepsUnknownKeys()
 {
     const QVariantMap mapped = UpowerSource::mapProperties({{"some-new-property", 5}});
     QCOMPARE(mapped.value("someNewProperty").toInt(), 5);
+}
+
+void TestUpower::buildsEnumerateDevicesRequest()
+{
+    const QDBusMessage message = UpowerSource::enumerateDevicesRequest();
+    QCOMPARE(message.service(), QString("org.freedesktop.UPower"));
+    QCOMPARE(message.path(), QString("/org/freedesktop/UPower"));
+    QCOMPARE(message.interface(), QString("org.freedesktop.UPower"));
+    QCOMPARE(message.member(), QString("EnumerateDevices"));
+}
+
+void TestUpower::buildsDevicePropertiesRequest()
+{
+    const QString path = QStringLiteral("/org/freedesktop/UPower/devices/battery_BAT0");
+    const QDBusMessage message = UpowerSource::devicePropertiesRequest(path);
+    QCOMPARE(message.service(), QString("org.freedesktop.UPower"));
+    QCOMPARE(message.path(), path);
+    QCOMPARE(message.interface(), QString("org.freedesktop.DBus.Properties"));
+    QCOMPARE(message.member(), QString("GetAll"));
+    QCOMPARE(message.arguments().value(0).toString(),
+             QString("org.freedesktop.UPower.Device"));
 }
 
 void TestUpower::blockingReadWithoutSystemBusReturnsEmpty()

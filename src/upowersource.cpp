@@ -16,6 +16,7 @@ constexpr int CallTimeoutMs = 1000;
 const char *const UPowerService = "org.freedesktop.UPower";
 const char *const UPowerPath = "/org/freedesktop/UPower";
 const char *const UPowerInterface = "org.freedesktop.UPower";
+const char *const PropertiesInterface = "org.freedesktop.DBus.Properties";
 const char *const DeviceInterface = "org.freedesktop.UPower.Device";
 
 QString withoutSeparators(const QString &key)
@@ -117,23 +118,6 @@ QVariant technologyValue(const QVariant &value)
     }
 }
 
-QDBusMessage enumerateDevicesRequest()
-{
-    return QDBusMessage::createMethodCall(QLatin1String(UPowerService),
-                                          QLatin1String(UPowerPath),
-                                          QLatin1String(UPowerInterface),
-                                          QStringLiteral("EnumerateDevices"));
-}
-
-QDBusMessage devicePropertiesRequest(const QString &path)
-{
-    QDBusMessage request = QDBusMessage::createMethodCall(QLatin1String(UPowerService), path,
-                                                          QLatin1String(DeviceInterface),
-                                                          QStringLiteral("GetAll"));
-    request << QLatin1String(DeviceInterface);
-    return request;
-}
-
 struct DeviceQuery
 {
     int pending = 0;
@@ -145,6 +129,23 @@ struct DeviceQuery
 UpowerSource::UpowerSource(QObject *parent)
     : QObject(parent)
 {
+}
+
+QDBusMessage UpowerSource::enumerateDevicesRequest()
+{
+    return QDBusMessage::createMethodCall(QLatin1String(UPowerService),
+                                          QLatin1String(UPowerPath),
+                                          QLatin1String(UPowerInterface),
+                                          QStringLiteral("EnumerateDevices"));
+}
+
+QDBusMessage UpowerSource::devicePropertiesRequest(const QString &path)
+{
+    QDBusMessage request = QDBusMessage::createMethodCall(QLatin1String(UPowerService), path,
+                                                          QLatin1String(PropertiesInterface),
+                                                          QStringLiteral("GetAll"));
+    request << QLatin1String(DeviceInterface);
+    return request;
 }
 
 QVariantMap UpowerSource::mapProperties(const QVariantMap &raw)

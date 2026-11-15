@@ -1,6 +1,7 @@
 #ifndef UPOWERSOURCE_H
 #define UPOWERSOURCE_H
 
+#include <QDBusMessage>
 #include <QObject>
 #include <QVariantMap>
 
@@ -23,6 +24,11 @@ public:
     static QVariantMap mapProperties(const QVariantMap &raw);
     // True when the device reports Type == 2 (battery).
     static bool isBatteryDevice(const QVariantMap &props);
+
+    // Request builders exposed for tests. GetAll must be sent to the standard
+    // org.freedesktop.DBus.Properties interface, not to the device interface.
+    static QDBusMessage enumerateDevicesRequest();
+    static QDBusMessage devicePropertiesRequest(const QString &path);
 
 signals:
     void updated(const QVariantMap &device);

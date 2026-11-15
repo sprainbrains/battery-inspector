@@ -1,0 +1,15 @@
+{
+  "name": "batteryinspector.sprainbrains",
+  "description": "Inspect detailed battery telemetry on Ubuntu Touch",
+  "architecture": "@ARCH@",
+  "title": "Battery Inspector",
+  "hooks": {
+    "batteryinspector": {
+      "apparmor": "batteryinspector.apparmor",
+      "desktop": "batteryinspector.desktop"
+    }
+  },
+  "version": "1.0.0",
+  "maintainer": "sprainbrains",
+  "framework": "@CLICK_FRAMEWORK@"
+}

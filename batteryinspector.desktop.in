@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Battery Inspector
+Comment=Detailed battery telemetry for Ubuntu Touch
+Exec=batteryinspector
+Icon=assets/logo.svg
+Terminal=false
+Type=Application
+X-Lomiri-Touch=true

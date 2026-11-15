@@ -1,0 +1,10 @@
+{
+  "policy_groups": [],
+  "policy_version": "@APPARMOR_POLICY@",
+  "read_path": [
+    "/sys/class/power_supply/",
+    "/sys/class/power_supply/**",
+    "/sys/devices/**/power_supply/",
+    "/sys/devices/**/power_supply/**"
+  ]
+}

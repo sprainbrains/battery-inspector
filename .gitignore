@@ -1,0 +1,9 @@
+/build/
+/build-*/
+/.clickable/
+/.superpowers/
+*.click
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.user

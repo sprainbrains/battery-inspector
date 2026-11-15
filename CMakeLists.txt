@@ -26,7 +26,7 @@ endif()
 
 configure_file(manifest.json.in ${CMAKE_CURRENT_BINARY_DIR}/manifest.json @ONLY)
 configure_file(batteryinspector.apparmor.in ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.apparmor @ONLY)
-configure_file(batteryinspector.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.desktop.in COPYONLY)
+configure_file(batteryinspector.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/batteryinspector.desktop COPYONLY)
 
 qt5_add_resources(QML_RESOURCES qml/qml.qrc)
 add_executable(${APP_BINARY} src/main.cpp ${QML_RESOURCES})

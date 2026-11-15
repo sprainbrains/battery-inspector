@@ -166,6 +166,8 @@ void TestBatteryProvider::savesReport()
 
     const QString path = provider.saveReport();
     QVERIFY2(!path.isEmpty(), "saveReport returned an empty path");
+    QVERIFY(path.endsWith(QStringLiteral("/batteryinspector.sprainbrains/report.json")));
+    QVERIFY(!path.contains(QStringLiteral("batteryinspector.sprainbrains/batteryinspector.sprainbrains")));
     QVERIFY(QFile::exists(path));
 
     QFile file(path);

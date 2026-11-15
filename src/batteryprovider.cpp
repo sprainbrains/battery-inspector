@@ -142,10 +142,11 @@ QString BatteryProvider::saveReport(const QString &path) const
 {
     QString target = path;
     if (target.isEmpty()) {
-        const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-        if (directory.isEmpty())
+        const QString base = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+        if (base.isEmpty())
             return {};
-        target = directory + QLatin1Char('/') + QLatin1String(ReportFileName);
+        target = base + QLatin1String("/batteryinspector.sprainbrains/")
+                + QLatin1String(ReportFileName);
     }
 
     if (!QDir().mkpath(QFileInfo(target).absolutePath()))

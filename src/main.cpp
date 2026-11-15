@@ -19,8 +19,10 @@ namespace {
 
 void setApplicationIdentity()
 {
-    // Do not set organizationName: with both organization and application set
-    // to the click id, QStandardPaths nests the app data twice.
+    // QSettings uses organization/application for the config path, which is
+    // inside the click's writable ~/.config/<app-id>/ directory. Reports use
+    // an explicit GenericDataLocation path so they do not nest twice.
+    QCoreApplication::setOrganizationName(QStringLiteral("batteryinspector.sprainbrains"));
     QCoreApplication::setApplicationName(QStringLiteral("batteryinspector.sprainbrains"));
     QCoreApplication::setApplicationVersion(QStringLiteral("1.0.0"));
 }
